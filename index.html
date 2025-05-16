@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Search Algorithms: The Eigenvector Behind Google's PageRank</title>
+    <style>
+        :root {
+            --primary-color: #4285f4; /* Google Blue */
+            --secondary-color: #34a853; /* Google Green */
+            --accent-color: #ea4335; /* Google Red */
+            --alt-color: #fbbc05; /* Google Yellow */
+            --light-bg: #f8f9fa;
+            --dark-bg: #202124;
+            --text-color: #3c4043;
+            --light-text: #ffffff;
+        }
+        
+        body {
+            font-family: 'Google Sans', 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-bg);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .poster {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: white;
+            box-shadow: 0 0 30px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            position: relative;
+        }
+        
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 42px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 18px;
+            color: var(--text-color);
+            margin-top: 10px;
+            font-style: italic;
+        }
+        
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 15%;
+            right: 15%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--primary-color), var(--secondary-color), var(--accent-color), var(--alt-color), transparent);
+            border-radius: 3px;
+        }
+        
+        .abstract {
+            background: linear-gradient(to right, rgba(66, 133, 244, 0.1), rgba(52, 168, 83, 0.1));
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            border-left: 5px solid var(--primary-color);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .grid-item {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            border-top: 4px solid var(--primary-color);
+            transition: transform 0.3s ease;
+        }
+        
+        .grid-item:nth-child(2n) {
+            border-top-color: var(--secondary-color);
+        }
+        
+        .grid-item:nth-child(3n) {
+            border-top-color: var(--accent-color);
+        }
+        
+        .grid-item:nth-child(4n) {
+            border-top-color: var(--alt-color);
+        }
+        
+        .grid-item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        @media (max-width: 1200px) {
+            .grid-3 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .grid-container, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .section-title {
+            font-size: 28px;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--primary-color);
+            font-weight: 700;
+        }
+        
+        .grid-item:nth-child(2n) .section-title {
+            color: var(--secondary-color);
+            border-bottom-color: var(--secondary-color);
+        }
+        
+        .grid-item:nth-child(3n) .section-title {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+        }
+        
+        .grid-item:nth-child(4n) .section-title {
+            color: var(--alt-color);
+            border-bottom-color: var(--alt-color);
+        }
+        
+        .definition {
+            background-color: rgba(66, 133, 244, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 5px solid var(--primary-color);
+        }
+        
+        .example {
+            background-color: rgba(52, 168, 83, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 5px solid var(--secondary-color);
+        }
+        
+        .alert {
+            background-color: rgba(251, 188, 5, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 5px solid var(--alt-color);
+        }
+        
+        .important {
+            background-color: rgba(234, 67, 53, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 5px solid var(--accent-color);
+        }
+        
+        .matrix-viz {
+            text-align: center;
+            padding: 20px;
+            margin: 20px 0;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        .viz-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        .icon-box {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .icon-box i {
+            font-size: 24px;
+            margin-right: 10px;
+            color: var(--primary-color);
+        }
+        
+        .matrix {
+            font-family: 'Courier New', monospace;
+            background-color: var(--light-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px auto;
+            display: inline-block;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            line-height: 1.5;
+            white-space: pre;
+        }
+        
+        .card {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin: 20px 0;
+            border-top: 4px solid var(--primary-color);
+        }
+        
+        .references {
+            background-color: var(--light-bg);
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 40px;
+            border-top: 4px solid var(--primary-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        /* CSS for the mermaid diagram */
+        .mermaid-container {
+            text-align: center;
+            margin: 25px 0;
+            padding: 20px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        /* CSS for Math formatting */
+        .math {
+            font-family: 'Cambria Math', Georgia, serif;
+            font-style: italic;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            color: #8c8c8c;
+            font-size: 14px;
+            border-top: 1px solid #eaeaea;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .grid-item, .card, .abstract {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        .grid-item:nth-child(2) { animation-delay: 0.1s; }
+        .grid-item:nth-child(3) { animation-delay: 0.2s; }
+        .grid-item:nth-child(4) { animation-delay: 0.3s; }
+        
+        /* Power Method Visualization */
+        .power-method {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin: 25px 0;
+        }
+        
+        .vector-step {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            width: 100%;
+            max-width: 600px;
+        }
+        
+        .vector-container {
+            background-color: var(--light-bg);
+            padding: 10px 20px;
+            border-radius: 8px;
+            flex-grow: 1;
+            text-align: center;
+            margin: 0 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .vector-arrow {
+            font-size: 24px;
+            color: var(--primary-color);
+            margin: 0 10px;
+        }
+        
+        .convergence-message {
+            background-color: rgba(52, 168, 83, 0.1);
+            border-left: 5px solid var(--secondary-color);
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .mermaid {
+            max-width: 100%;
+            overflow: auto;
+        }
+        
+        /* Google-style buttons */
+        .g-button {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            font-family: 'Google Sans', sans-serif;
+            font-weight: 500;
+            padding: 10px 24px;
+            border-radius: 24px;
+            text-decoration: none;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border: none;
+            cursor: pointer;
+        }
+        
+        .g-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        
+        .g-button.secondary {
+            background-color: var(--secondary-color);
+        }
+        
+        .g-button.accent {
+            background-color: var(--accent-color);
+        }
+        
+        .g-button.alt {
+            background-color: var(--alt-color);
+        }
+        
+        /* Google-style banner */
+        .banner {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .banner h1 {
+            font-size: 48px;
+            margin-bottom: 15px;
+            font-weight: 700;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .banner p {
+            font-size: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+        
+        .banner::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            z-index: 1;
+        }
+        
+        .banner * {
+            position: relative;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+    <div class="poster">
+        <div class="banner">
+            <h1>Web Search Algorithms</h1>
+            <p>The Eigenvector Behind Google's PageRank</p>
+        </div>
+
+        <div class="abstract">
+            <h2 class="section-title" style="border-bottom-color: var(--primary-color);">Abstract</h2>
+            <p>The internet contains billions of pages, making information retrieval a monumental challenge. Before Google emerged in 1998, search engines struggled to provide relevant results because they primarily relied on keyword frequency. Google revolutionized search through PageRank, an algorithm that leverages linear algebra to determine web page importance. This poster explores how PageRank applies eigenvector calculations to solve the fundamental search problem of ranking pages by relevance.</p>
+            <p>PageRank's elegance lies in its mathematical formulation of a seemingly subjective problem—web page importance. By modeling links between pages as votes, where important pages' votes carry more weight, Google created a recursive definition of importance that translates perfectly to an eigenvector problem. The poster demonstrates how this system can be expressed as a matrix equation Ax = x, where x is the PageRank vector (an eigenvector with eigenvalue 1). We examine how Google addresses real-world challenges like disconnected networks through a damping factor that guarantees unique rankings, and how the power method makes computation feasible at web scale. By connecting theory from our linear algebra classroom with one of technology's most transformative applications, we see how eigenvectors directly impact how billions of people access information daily.</p>
+        </div>
+
+        <div class="grid-container">
+            <div class="grid-item">
+                <h2 class="section-title">Why Should We Care About PageRank?</h2>
+                <div class="important">
+                    <p>PageRank transformed how we find information online by effectively ranking billions of web pages based on importance. Before PageRank, search engines simply counted keyword occurrences, often leading to irrelevant results. Google's algorithm revolutionized search by using mathematics to determine page importance through link analysis, making the vast internet navigable and useful.</p>
+                </div>
+                
+                <div class="matrix-viz">
+                    <img src="images/old-vs-new-search.png" alt="Comparison of old search engines with Google's PageRank" width="90%">
+                </div>
+                
+                <p>The PageRank algorithm provided Google with a significant competitive advantage when it launched in 1998, quickly dominating the search market by delivering superior results. This mathematical approach to ranking web pages played a crucial role in Google's $25 billion IPO in 2004 - perhaps the most valuable application of linear algebra in history!</p>
+                
+                <div class="alert">
+                    <p><strong>Real-world Impact:</strong> Today, PageRank principles influence not only web search but also:</p>
+                    <ul>
+                        <li>Social network analysis</li>
+                        <li>Recommendation systems</li>
+                        <li>Scientific citation rankings</li>
+                        <li>Economic models</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="grid-item">
+                <h2 class="section-title">How PageRank Works: The Linear Algebra Connection</h2>
+                
+                <p>PageRank uses the powerful idea that <strong>links are endorsements</strong> - when a page links to another page, it's essentially voting for its importance. The mathematical model represents the web as a directed graph where pages are nodes and links are edges.</p>
+                
+                <div class="definition">
+                    <h3>The Mathematical Model:</h3>
+                    <p>If a page with importance score x<sub>j</sub> has n<sub>j</sub> outgoing links, it gives each linked page <sup>x<sub>j</sub></sup>/<sub>n<sub>j</sub></sub> of its importance. This creates a system of linear equations:</p>
+                    <div class="matrix">
+x<sub>i</sub> = ∑ x<sub>j</sub>/n<sub>j</sub>
+      j∈B<sub>i</sub>
+                    </div>
+                    <p>Where B<sub>i</sub> represents all pages that link to page i.</p>
+                </div>
+                
+                <div class="example">
+                    <h3>The Eigenvector Solution:</h3>
+                    <p>This system can be written as a matrix equation <strong>Ax = x</strong>, where:</p>
+                    <ul>
+                        <li><strong>A</strong> is the link matrix</li>
+                        <li><strong>x</strong> is the vector of importance scores</li>
+                        <li><strong>1</strong> is the eigenvalue</li>
+                    </ul>
+                    <p>The eigenvector corresponding to eigenvalue 1 gives the ranking of all web pages!</p>
+                </div>
+                
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph TD
+    subgraph Web Pages as a Directed Graph
+    A[Page 1\nScore: 0.387] --> B[Page 2\nScore: 0.129]
+    A --> C[Page 3\nScore: 0.290]
+    A --> D[Page 4\nScore: 0.194]
+    B --> C
+    B --> D
+    C --> A
+    D --> A
+    D --> C
+    end
+    
+    subgraph Link Matrix A
+    M1["A = [0   0   1   1/2\n1/3 0   0   0\n1/3 1/2 0   1/2\n1/3 1/2 0   0]"]
+    end
+    
+    subgraph PageRank Equation
+    M2["Ax = x\nwhere x is the eigenvector\nwith eigenvalue 1"]
+    end
+    
+    M1 --> M2
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-container">
+            <div class="grid-item">
+                <h2 class="section-title">Real-World Example: A Mini Web</h2>
+                
+                <p>Consider a small web of 4 pages with links as shown in the diagram. This example connects to what we've learned in lab by showing how to calculate the PageRank vector for a network.</p>
+                
+                <div class="matrix-viz">
+                    <svg width="320" height="280" viewBox="0 0 320 280">
+                        <!-- Background -->
+                        <rect x="0" y="0" width="320" height="280" fill="#f8f9fa" rx="10" ry="10"/>
+                        
+                        <!-- Page 1 -->
+                        <rect x="50" y="50" width="80" height="60" fill="#4285f4" rx="10" ry="10" opacity="0.8"/>
+                        <text x="90" y="80" fill="white" text-anchor="middle" font-weight="bold">Page 1</text>
+                        <text x="90" y="100" fill="white" text-anchor="middle" font-size="12">0.387</text>
+                        
+                        <!-- Page 2 -->
+                        <rect x="190" y="50" width="80" height="60" fill="#34a853" rx="10" ry="10" opacity="0.8"/>
+                        <text x="230" y="80" fill="white" text-anchor="middle" font-weight="bold">Page 2</text>
+                        <text x="230" y="100" fill="white" text-anchor="middle" font-size="12">0.129</text>
+                        
+                        <!-- Page 3 -->
+                        <rect x="50" y="170" width="80" height="60" fill="#ea4335" rx="10" ry="10" opacity="0.8"/>
+                        <text x="90" y="200" fill="white" text-anchor="middle" font-weight="bold">Page 3</text>
+                        <text x="90" y="220" fill="white" text-anchor="middle" font-size="12">0.290</text>
+                        
+                        <!-- Page 4 -->
+                        <rect x="190" y="170" width="80" height="60" fill="#fbbc05" rx="10" ry="10" opacity="0.8"/>
+                        <text x="230" y="200" fill="white" text-anchor="middle" font-weight="bold">Page 4</text>
+                        <text x="230" y="220" fill="white" text-anchor="middle" font-size="12">0.194</text>
+                        
+                        <!-- Arrows from Page 1 -->
+                        <line x1="130" y1="75" x2="185" y2="75" stroke="#4285f4" stroke-width="2"/>
+                        <polygon points="185,75 178,72 178,78" fill="#4285f4"/>
+                        
+                        <line x1="90" y1="110" x2="90" y2="165" stroke="#4285f4" stroke-width="2"/>
+                        <polygon points="90,165 87,158 93,158" fill="#4285f4"/>
+                        
+                        <line x1="110" y1="110" x2="200" y2="165" stroke="#4285f4" stroke-width="2"/>
+                        <polygon points="200,165 193,160 196,155" fill="#4285f4"/>
+                        
+                        <!-- Arrows from Page 2 -->
+                        <line x1="210" y1="110" x2="100" y2="165" stroke="#34a853" stroke-width="2"/>
+                        <polygon points="100,165 106,160 108,155" fill="#34a853"/>
+                        
+                        <line x1="230" y1="110" x2="230" y2="165" stroke="#34a853" stroke-width="2"/>
+                        <polygon points="230,165 227,158 233,158" fill="#34a853"/>
+                        
+                        <!-- Arrows from Page 3 -->
+                        <line x1="90" y1="170" x2="90" y2="115" stroke="#ea4335" stroke-width="2"/>
+                        <polygon points="90,115 87,122 93,122" fill="#ea4335"/>
+                        
+                        <!-- Arrows from Page 4 -->
+                        <line x1="190" y1="195" x2="135" y2="195" stroke="#fbbc05" stroke-width="2"/>
+                        <polygon points="135,195 142,192 142,198" fill="#fbbc05"/>
+                        
+                        <line x1="210" y1="170" x2="110" y2="100" stroke="#fbbc05" stroke-width="2"/>
+                        <polygon points="110,100 117,105 120,100" fill="#fbbc05"/>
+                    </svg>
+                </div>
+                
+                <div class="example">
+                    <p>The link matrix for this mini web would be:</p>
+                    <div class="matrix">
+A = [ 0    0    1    1/2 ]
+    [ 1/3  0    0    0   ]
+    [ 1/3  1/2  0    1/2 ]
+    [ 1/3  1/2  0    0   ]
+                    </div>
+                </div>
+                
+                <p>Solving for the eigenvector with eigenvalue 1, we get: <span class="math">x = [0.387, 0.129, 0.290, 0.194]<sup>T</sup></span></p>
+                
+                <div class="alert">
+                    <p>This means Page 1 is most important, followed by Pages 3, 4, and 2. Notice that even though Page 3 has the most backlinks, it's not the most important - because Page 1 receives a vote from the important Page 3!</p>
+                </div>
+            </div>
+            
+            <div class="grid-item">
+                <h2 class="section-title">Handling Disconnected Networks</h2>
+                
+                <p>In real web graphs with billions of pages, the network may be disconnected. Google's solution introduces a damping factor m (typically 0.15):</p>
+                
+                <div class="definition">
+                    <div class="matrix">
+M = (1-m)A + mS
+                    </div>
+                    <p>Where S is a matrix with all entries 1/n. This models a "random surfer" who:</p>
+                    <ul>
+                        <li>With probability (1-m) follows links from the current page</li>
+                        <li>With probability m jumps to a random page</li>
+                    </ul>
+                </div>
+                
+                <div class="matrix-viz">
+                    <svg width="320" height="220" viewBox="0 0 320 220">
+                        <!-- Background -->
+                        <rect x="0" y="0" width="320" height="220" fill="#f8f9fa" rx="10" ry="10"/>
+                        
+                        <!-- Random Surfer -->
+                        <circle cx="160" cy="110" r="30" fill="#4285f4"/>
+                        <circle cx="160" cy="90" r="10" fill="white"/>
+                        <path d="M145,110 Q160,125 175,110" stroke="white" stroke-width="2" fill="none"/>
+                        
+                        <!-- Follow Link Path -->
+                        <path d="M160,150 Q200,190 240,180" stroke="#34a853" stroke-width="3" fill="none" stroke-dasharray="5,5"/>
+                        <text x="220" y="170" fill="#34a853" font-weight="bold">85%</text>
+                        <circle cx="240" cy="180" r="15" fill="#34a853"/>
+                        <text x="240" y="185" fill="white" text-anchor="middle" font-weight="bold">→</text>
+                        
+                        <!-- Random Jump Path -->
+                        <path d="M160,150 Q120,190 80,180" stroke="#ea4335" stroke-width="3" fill="none" stroke-dasharray="5,5"/>
+                        <text x="100" y="170" fill="#ea4335" font-weight="bold">15%</text>
+                        <circle cx="80" cy="180" r="15" fill="#ea4335"/>
+                        <text x="80" y="185" fill="white" text-anchor="middle" font-weight="bold">↯</text>
+                        
+                        <!-- Title -->
+                        <text x="160" y="40" text-anchor="middle" font-weight="bold" font-size="16">The Random Surfer Model</text>
+                    </svg>
+                </div>
+                
+                <div class="important">
+                    <p>This modification ensures:</p>
+                    <ol>
+                        <li>A unique ranking for all pages</li>
+                        <li>No pages have zero importance</li>
+                        <li>The power method can efficiently compute rankings</li>
+                    </ol>
+                </div>
+                
+                <p>This approach connects to our lab work on matrix properties - the modified matrix M is positive and column-stochastic, guaranteeing a unique eigenvector with eigenvalue 1 (by the Perron-Frobenius theorem).</p>
+            </div>
+        </div>
+
+        <div class="grid-container">
+            <div class="grid-item">
+                <h2 class="section-title">Vector Space Applications Beyond the Web</h2>
+                
+                <p>PageRank demonstrates linear algebra applied across different vector spaces:</p>
+                
+                <div class="matrix-viz">
+                    <svg width="100%" height="200" viewBox="0 0 600 200">
+                        <!-- Document Vector Space -->
+                        <rect x="10" y="10" width="180" height="180" fill="rgba(66, 133, 244, 0.1)" rx="10" ry="10" stroke="#4285f4" stroke-width="2"/>
+                        <text x="100" y="30" text-anchor="middle" font-weight="bold" fill="#4285f4">Document Vector Space</text>
+                        <text x="100" y="100" text-anchor="middle" fill="#4285f4" font-size="12">• Pages as vectors</text>
+                        <text x="100" y="120" text-anchor="middle" fill="#4285f4" font-size="12">• Links create relationships</text>
+                        <text x="100" y="140" text-anchor="middle" fill="#4285f4" font-size="12">• Principal eigenvector</text>
+                        <text x="100" y="160" text-anchor="middle" fill="#4285f4" font-size="12">  ranks importance</text>
+                        
+                        <!-- Markov Chain Space -->
+                        <rect x="210" y="10" width="180" height="180" fill="rgba(52, 168, 83, 0.1)" rx="10" ry="10" stroke="#34a853" stroke-width="2"/>
+                        <text x="300" y="30" text-anchor="middle" font-weight="bold" fill="#34a853">Markov Chain Space</text>
+                        <text x="300" y="100" text-anchor="middle" fill="#34a853" font-size="12">• Stochastic process</text>
+                        <text x="300" y="120" text-anchor="middle" fill="#34a853" font-size="12">• State transitions</text>
+                        <text x="300" y="140" text-anchor="middle" fill="#34a853" font-size="12">• Steady-state</text>
+                        <text x="300" y="160" text-anchor="middle" fill="#34a853" font-size="12">  probability distribution</text>
+                        
+                        <!-- Graph Theory Space -->
+                        <rect x="410" y="10" width="180" height="180" fill="rgba(234, 67, 53, 0.1)" rx="10" ry="10" stroke="#ea4335" stroke-width="2"/>
+                        <text x="500" y="30" text-anchor="middle" font-weight="bold" fill="#ea4335">Graph Theory Space</text>
+                        <text x="500" y="100" text-anchor="middle" fill="#ea4335" font-size="12">• Directed graph</text>
+                        <text x="500" y="120" text-anchor="middle" fill="#ea4335" font-size="12">• Weighted edges</text>
+                        <text x="500" y="140" text-anchor="middle" fill="#ea4335" font-size="12">• Structural properties</text>
+                        <text x="500" y="160" text-anchor="middle" fill="#ea4335" font-size="12">  revealed by eigenvalues</text>
+                    </svg>
+                </div>
+                
+                <p>This multi-perspective view of PageRank demonstrates how the same mathematical tool - the eigenvector - can find significance across different branches of mathematics, highlighting the power and flexibility of linear algebra.</p>
+                
+                <div class="alert">
+                    <p><strong>Connection to our course:</strong> PageRank illustrates the fundamental concept that eigenvectors reveal the most important directions in a transformation, allowing us to identify the "important" pages in a network by finding where the transformation "naturally" pushes the system.</p>
+                </div>
+            </div>
+            
+            <div class="grid-item">
+                <h2 class="section-title">From Lab to Real World</h2>
+                
+                <p>In our Linear Algebra lab, we worked with small networks to understand eigenvector calculations. Google scales this to billions of pages using the power method:</p>
+                
+                <div class="power-method">
+                    <h3>Power Method for PageRank Calculation</h3>
+                    
+                    <div class="vector-step">
+                        <div class="vector-container" style="background-color: rgba(66, 133, 244, 0.1); border: 2px solid #4285f4;">
+                            <p><strong>Initial Vector x<sub>0</sub></strong></p>
+                            <p>[0.25, 0.25, 0.25, 0.25]<sup>T</sup></p>
+                        </div>
+                    </div>
+                    
+                    <div class="vector-arrow">↓</div>
+                    
+                    <div class="vector-step">
+                        <div class="vector-container" style="background-color: rgba(52, 168, 83, 0.1); border: 1px solid #34a853;">
+                            <p><strong>Iteration 1: x<sub>1</sub> = M·x<sub>0</sub></strong></p>
+                            <p>[0.32, 0.15, 0.31, 0.22]<sup>T</sup></p>
+                        </div>
+                    </div>
+                    
+                    <div class="vector-arrow">↓</div>
+                    
+                    <div class="vector-step">
+                        <div class="vector-container" style="background-color: rgba(251, 188, 5, 0.1); border: 1px solid #fbbc05;">
+                            <p><strong>Iteration 5: x<sub>5</sub> = M·x<sub>4</sub></strong></p>
+                            <p>[0.36, 0.14, 0.29, 0.21]<sup>T</sup></p>
+                        </div>
+                    </div>
+                    
+                    <div class="vector-arrow">↓</div>
+                    
+                    <div class="vector-step">
+                        <div class="vector-container" style="background-color: rgba(234, 67, 53, 0.1); border: 2px solid #ea4335;">
+                            <p><strong>Final PageRank Vector</strong></p>
+                            <p>[0.387, 0.129, 0.290, 0.194]<sup>T</sup></p>
+                        </div>
+                    </div>
+                    
+                    <div class="convergence-message">
+                        <p>The power method iteratively applies the matrix M to a starting vector until convergence to the PageRank vector (the eigenvector with eigenvalue 1).</p>
+                    </div>
+                </div>
+                
+                <div class="example">
+                    <p>This method is efficient for sparse matrices because most web pages link to only a few others, making computation feasible at Google's scale.</p>
+                    <p>The algorithm typically converges after just a few dozen iterations, even for networks with billions of nodes!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">Why Linear Algebra Matters</h2>
+            
+            <p>PageRank demonstrates why linear algebra is essential in our digital world:</p>
+            
+            <div class="viz-container">
+                <div style="flex: 1; min-width: 250px; padding: 15px; margin: 10px; background-color: rgba(66, 133, 244, 0.1); border-radius: 10px; text-align: center;">
+                    <h3 style="color: #4285f4;">Powerful Abstraction</h3>
+                    <p>Complex networks reduced to matrix operations</p>
+                </div>
+                
+                <div style="flex: 1; min-width: 250px; padding: 15px; margin: 10px; background-color: rgba(52, 168, 83, 0.1); border-radius: 10px; text-align: center;">
+                    <h3 style="color: #34a853;">Computational Efficiency</h3>
+                    <p>Eigenvalue methods scale to billions of nodes</p>
+                </div>
+                
+                <div style="flex: 1; min-width: 250px; padding: 15px; margin: 10px; background-color: rgba(234, 67, 53, 0.1); border-radius: 10px; text-align: center;">
+                    <h3 style="color: #ea4335;">Real-World Impact</h3>
+                    <p>Mathematical theory directly improves how billions of people access information daily</p>
+                </div>
+            </div>
+            
+            <div class="important" style="text-align: center; margin-top: 25px;">
+                <p>The $25 billion Google IPO in 2004 was largely based on this elegant application of eigenvectors - perhaps the most valuable application of linear algebra in history!</p>
+            </div>
+        </div>
+
+        <div class="references">
+            <h2 class="section-title">References</h2>
+            <ul>
+                <li>Lab Assignment: "Eigenvalues and Eigenvectors" - Linear Algebra Course Materials (2025)</li>
+                <li>Homework Problem: "Matrix Diagonalization" - Linear Algebra Course Materials (2025)</li>
+                <li>Brin, S., & Page, L. (1998). The anatomy of a large-scale hypertextual Web search engine. Computer Networks and ISDN Systems, 30(1-7), 107-117.</li>
+                <li>Bryan, K., & Leise, T. (2006). The $25,000,000,000 eigenvector: The linear algebra behind Google. SIAM Review, 48(3), 569-581.</li>
+                <li>Meyer, C. D. (2000). Matrix Analysis and Applied Linear Algebra. SIAM.</li>
+                <li>Langville, A. N., & Meyer, C. D. (2011). Google's PageRank and beyond: The science of search engine rankings. Princeton University Press.</li>
+            </ul>
+            
+            <h3>AI Usage Statement:</h3>
+            <p>For this poster project on "Web Search Algorithms: The Eigenvector Behind Google's PageRank," I used Claude (an AI assistant) to help research the topic, organize the information, and create the initial draft of the poster content and abstract. I provided Claude with the poster assignment guidelines and a reference to my previous Poster 2 on Linear Transformations as context.</p>
+            <p>Claude helped me gather information about PageRank algorithm through web searches, explaining the mathematical concepts involved, and organizing the content according to the poster requirements. While Claude provided the structure and core content, I reviewed the material, modified examples to align with my understanding from our coursework, and ensured the poster reflected my knowledge of the topic.</p>
+            <p>I particularly worked on understanding the matrix calculations, the eigenvector approach, and how this connects to what we learned in our labs. The mathematical formulation, explanation of vector spaces, and real-world applications reflect my understanding of linear algebra concepts from our course.</p>
+            
+            <h3>Additional Resources:</h3>
+            <p><a href="logs.html" style="color: #4285f4; text-decoration: none; font-weight: bold; padding: 5px 10px; border: 1px solid #4285f4; border-radius: 24px; display: inline-block; margin-top: 10px;">View Conversation Logs</a> - Complete record of AI assistance and development process</p>
+        </div>
+        
+        <div class="footer">
+            <p>Linear Algebra Course - Poster 3: Application of Linear Algebra - May 2025</p>
+        </div>
+    </div>
+</body>
+</html>
